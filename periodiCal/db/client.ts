@@ -3,6 +3,5 @@ import { openDatabaseSync } from "expo-sqlite";
 import * as schema from "./schema";
 
 export const DATABASE_NAME = "database.db";
-// evtl. {} stuff entfernen, da hat wenigstens seite geladen
 export const expo_sqlite = openDatabaseSync(DATABASE_NAME);
 export const db = drizzle(expo_sqlite, { schema });

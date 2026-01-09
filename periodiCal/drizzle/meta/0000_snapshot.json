@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "09608637-d935-4e4b-81f0-2d0b197bdba6",
+  "id": "ffe71bff-0573-4a24-a14d-cac0d51af6f1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "days": {
@@ -10,15 +10,15 @@
         "date": {
           "name": "date",
           "type": "integer",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
         "userId": {
           "name": "userId",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "isPeriodDay": {
@@ -32,12 +32,25 @@
           "name": "periodId",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         }
       },
       "indexes": {},
       "foreignKeys": {
+        "days_userId_users_userId_fk": {
+          "name": "days_userId_users_userId_fk",
+          "tableFrom": "days",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "userId"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "days_periodId_periods_periodId_fk": {
           "name": "days_periodId_periods_periodId_fk",
           "tableFrom": "days",
@@ -52,7 +65,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "days_date_userId_pk": {
+          "columns": [
+            "date",
+            "userId"
+          ],
+          "name": "days_date_userId_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -72,19 +93,28 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "notes_date_days_date_fk": {
-          "name": "notes_date_days_date_fk",
+        "notes_date_userId_days_date_userId_fk": {
+          "name": "notes_date_userId_days_date_userId_fk",
           "tableFrom": "notes",
           "tableTo": "days",
           "columnsFrom": [
-            "date"
+            "date",
+            "userId"
           ],
           "columnsTo": [
-            "date"
+            "date",
+            "userId"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -113,7 +143,7 @@
         },
         "userId": {
           "name": "userId",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -155,19 +185,28 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "symptoms_date_days_date_fk": {
-          "name": "symptoms_date_days_date_fk",
+        "symptoms_date_userId_days_date_userId_fk": {
+          "name": "symptoms_date_userId_days_date_userId_fk",
           "tableFrom": "symptoms",
           "tableTo": "days",
           "columnsFrom": [
-            "date"
+            "date",
+            "userId"
           ],
           "columnsTo": [
-            "date"
+            "date",
+            "userId"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -182,7 +221,7 @@
       "columns": {
         "userId": {
           "name": "userId",
-          "type": "integer",
+          "type": "text",
           "primaryKey": true,
           "notNull": true,
           "autoincrement": false

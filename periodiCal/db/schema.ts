@@ -1,7 +1,7 @@
-import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { foreignKey, int, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
-  userId: int().primaryKey(),
+  userId: text().primaryKey(),
   name: text().notNull(),
   age: int().notNull(),
   weight: int()
@@ -11,22 +11,36 @@ export const periods = sqliteTable("periods", {
     periodId: text().primaryKey(),
     // 0: spotting, 1: low, 2: medium, 3: high
     intensity: int().notNull(),
-    userId: int().references(() => users.userId).notNull()
+    userId: text().references(() => users.userId).notNull()
 });
 
 export const days = sqliteTable("days", {
-  date: int({ mode: 'timestamp' }).primaryKey(),
-  userId: int(),
+  date: int({ mode: 'timestamp' }).notNull(),
+  userId: text().references(() => users.userId).notNull(),
   isPeriodDay: int({ mode: 'boolean' }),
-  periodId: text().references(() => periods.periodId).notNull() // can be null if loggedDay is not a period day
-});
+  periodId: text().references(() => periods.periodId) // can be null if loggedDay is not a period day
+}, (table) => [
+  primaryKey({ columns: [table.date, table.userId] })
+]);
 
 export const symptoms = sqliteTable("symptoms", {
-    symptomId: text().primaryKey(),
-    date: int({ mode: 'timestamp' }).references(() => days.date).notNull()
-});
+  symptomId: text().primaryKey(),
+  date: int({ mode: 'timestamp' }).notNull(),
+  userId: text().notNull(),
+}, (table) => [
+  foreignKey({
+    columns: [table.date, table.userId],
+    foreignColumns: [days.date, days.userId],
+  })
+]);
 
 export const notes = sqliteTable("notes", {
-    noteId: text().primaryKey(),
-    date: int({ mode: 'timestamp' }).references(() => days.date).notNull()
-});
+  noteId: text().primaryKey(),
+  date: int({ mode: 'timestamp' }).notNull(),
+  userId: text().notNull(),
+}, (table) => [
+  foreignKey({
+    columns: [table.date, table.userId],
+    foreignColumns: [days.date, days.userId],
+  })
+]);

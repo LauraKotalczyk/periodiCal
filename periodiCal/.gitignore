@@ -4,6 +4,7 @@ expo*
 
 # NPM
 node_modules/
+package-lock.json
 
 # other
 .DS_Store
