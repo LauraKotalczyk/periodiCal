@@ -2,7 +2,6 @@ import 'react-native-get-random-values';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import 'react-native-reanimated';
 // DB
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
