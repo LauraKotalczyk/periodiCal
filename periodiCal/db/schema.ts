@@ -15,7 +15,7 @@ export const periods = sqliteTable("periods", {
 });
 
 export const days = sqliteTable("days", {
-  date: int({ mode: 'timestamp' }).notNull(),
+  date: text().notNull(), // stores dates as YYYY-MM-DD for simpler processing
   userId: text().references(() => users.userId).notNull(),
   isPeriodDay: int({ mode: 'boolean' }),
   periodId: text().references(() => periods.periodId) // can be null if loggedDay is not a period day
@@ -25,7 +25,7 @@ export const days = sqliteTable("days", {
 
 export const symptoms = sqliteTable("symptoms", {
   symptomId: text().primaryKey(),
-  date: int({ mode: 'timestamp' }).notNull(),
+  date: text().notNull(),
   userId: text().notNull(),
 }, (table) => [
   foreignKey({
@@ -36,7 +36,7 @@ export const symptoms = sqliteTable("symptoms", {
 
 export const notes = sqliteTable("notes", {
   noteId: text().primaryKey(),
-  date: int({ mode: 'timestamp' }).notNull(),
+  date: text().notNull(),
   userId: text().notNull(),
 }, (table) => [
   foreignKey({
