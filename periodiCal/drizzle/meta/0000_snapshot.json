@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ffe71bff-0573-4a24-a14d-cac0d51af6f1",
+  "id": "5bb5edb0-590a-4308-a177-94e1b88c9e4d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "days": {
@@ -9,7 +9,7 @@
       "columns": {
         "date": {
           "name": "date",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -27,13 +27,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "periodId": {
-          "name": "periodId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {},
@@ -47,19 +40,6 @@
           ],
           "columnsTo": [
             "userId"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "days_periodId_periods_periodId_fk": {
-          "name": "days_periodId_periods_periodId_fk",
-          "tableFrom": "days",
-          "tableTo": "periods",
-          "columnsFrom": [
-            "periodId"
-          ],
-          "columnsTo": [
-            "periodId"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -89,7 +69,7 @@
         },
         "date": {
           "name": "date",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -124,6 +104,100 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "period_days": {
+      "name": "period_days",
+      "columns": {
+        "periodId": {
+          "name": "periodId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "intensity": {
+          "name": "intensity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "symptoms": {
+          "name": "symptoms",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "period_days_periodId_periods_periodId_fk": {
+          "name": "period_days_periodId_periods_periodId_fk",
+          "tableFrom": "period_days",
+          "tableTo": "periods",
+          "columnsFrom": [
+            "periodId"
+          ],
+          "columnsTo": [
+            "periodId"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "period_days_date_days_date_fk": {
+          "name": "period_days_date_days_date_fk",
+          "tableFrom": "period_days",
+          "tableTo": "days",
+          "columnsFrom": [
+            "date"
+          ],
+          "columnsTo": [
+            "date"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "period_days_userId_users_userId_fk": {
+          "name": "period_days_userId_users_userId_fk",
+          "tableFrom": "period_days",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "userId"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "period_days_periodId_date_userId_pk": {
+          "columns": [
+            "periodId",
+            "date",
+            "userId"
+          ],
+          "name": "period_days_periodId_date_userId_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "periods": {
       "name": "periods",
       "columns": {
@@ -134,15 +208,22 @@
           "notNull": true,
           "autoincrement": false
         },
-        "intensity": {
-          "name": "intensity",
-          "type": "integer",
+        "userId": {
+          "name": "userId",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "userId": {
-          "name": "userId",
+        "startDate": {
+          "name": "startDate",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "endDate": {
+          "name": "endDate",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -181,7 +262,7 @@
         },
         "date": {
           "name": "date",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -192,10 +273,43 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "symptom": {
+          "name": "symptom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {},
       "foreignKeys": {
+        "symptoms_date_days_date_fk": {
+          "name": "symptoms_date_days_date_fk",
+          "tableFrom": "symptoms",
+          "tableTo": "days",
+          "columnsFrom": [
+            "date"
+          ],
+          "columnsTo": [
+            "date"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "symptoms_userId_users_userId_fk": {
+          "name": "symptoms_userId_users_userId_fk",
+          "tableFrom": "symptoms",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "userId"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "symptoms_date_userId_days_date_userId_fk": {
           "name": "symptoms_date_userId_days_date_userId_fk",
           "tableFrom": "symptoms",

@@ -9,29 +9,39 @@ export const users = sqliteTable("users", {
 
 export const periods = sqliteTable("periods", {
     periodId: text().primaryKey(),
-    // 0: spotting, 1: low, 2: medium, 3: high
-    intensity: int().notNull(),
-    userId: text().references(() => users.userId).notNull()
+    userId: text().references(() => users.userId).notNull(),
+    startDate: text().notNull(), // Start date of the period (not a FK)
+    endDate: text().notNull()    // End date of the period (not a FK)
 });
 
 export const days = sqliteTable("days", {
-  date: text().notNull(), // stores dates as YYYY-MM-DD for simpler processing
-  userId: text().references(() => users.userId).notNull(),
-  isPeriodDay: int({ mode: 'boolean' }),
-  periodId: text().references(() => periods.periodId) // can be null if loggedDay is not a period day
+    date: text().notNull(), // stores dates as YYYY-MM-DD for simpler processing
+    userId: text().references(() => users.userId).notNull(),
+    isPeriodDay: int({ mode: 'boolean' })
 }, (table) => [
-  primaryKey({ columns: [table.date, table.userId] })
+    primaryKey({ columns: [table.date, table.userId] })
+]);
+
+export const periodDays = sqliteTable("period_days", {
+    periodId: text().references(() => periods.periodId).notNull(),
+    date: text().notNull().references(() => days.date),
+    userId: text().notNull().references(() => users.userId),
+    intensity: int(), // 0: spotting, 1: low, 2: medium, 3: high
+    symptoms: text() // Optional: comma-separated list of symptom IDs
+}, (table) => [
+    primaryKey({ columns: [table.periodId, table.date, table.userId] })
 ]);
 
 export const symptoms = sqliteTable("symptoms", {
-  symptomId: text().primaryKey(),
-  date: text().notNull(),
-  userId: text().notNull(),
+    symptomId: text().primaryKey(),
+    date: text().notNull().references(() => days.date),
+    userId: text().notNull().references(() => users.userId),
+    symptom: text().notNull() // Type of symptom (e.g., cramps, headache)
 }, (table) => [
-  foreignKey({
-    columns: [table.date, table.userId],
-    foreignColumns: [days.date, days.userId],
-  })
+    foreignKey({
+        columns: [table.date, table.userId],
+        foreignColumns: [days.date, days.userId],
+    })
 ]);
 
 export const notes = sqliteTable("notes", {

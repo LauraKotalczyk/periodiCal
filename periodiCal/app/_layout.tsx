@@ -20,7 +20,7 @@ export async function addUserToDb(db: any) {
   await db.insert(schema.users).values({
     userId: uuidv4(),
     name: "test-user",
-    age: 22,
+    age: 23,
     weight: null
   });
 }
@@ -32,7 +32,7 @@ export default function RootLayout() {
   useDrizzleStudio(expo_sqlite);
 
     if (success) {
-      // addUserToDb(db);
+      alert("Successful database loading!")
     }
 
   
@@ -46,7 +46,6 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-      <StatusBar style="auto" />
     </ThemeProvider>
   );
 }
