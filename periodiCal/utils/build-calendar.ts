@@ -1,17 +1,16 @@
 import { DayMetadata } from '../types/calendar';
 
 export const getDaysInMonth = (year: number, month: number): DayMetadata[] => {
-  const date = new Date(year, month, 1);
+  // Use local time to avoid timezone shifts during calculation
+  const firstDayOfMonth = new Date(year, month, 1);
+  const firstDayOfWeek = firstDayOfMonth.getDay(); // 0 (Sun) to 6 (Sat)
+  
   const days: DayMetadata[] = [];
   
-  // Get the first day of the week for the 1st of the month
-  // 0 (Sun) to 6 (Sat)
-  const firstDayOfWeek = date.getDay();
-  
-  // Previous month days to fill the first week
-  const prevMonthLastDay = new Date(year, month, 0).getDate();
+  // Previous month days
+  const prevMonthLastDate = new Date(year, month, 0).getDate();
   for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-    const d = new Date(year, month - 1, prevMonthLastDay - i);
+    const d = new Date(year, month - 1, prevMonthLastDate - i);
     days.push({
       date: formatDate(d),
       isCurrentMonth: false,
@@ -21,8 +20,8 @@ export const getDaysInMonth = (year: number, month: number): DayMetadata[] => {
   }
 
   // Current month days
-  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-  for (let i = 1; i <= lastDayOfMonth; i++) {
+  const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
+  for (let i = 1; i <= lastDateOfMonth; i++) {
     const d = new Date(year, month, i);
     days.push({
       date: formatDate(d),
@@ -32,8 +31,8 @@ export const getDaysInMonth = (year: number, month: number): DayMetadata[] => {
     });
   }
 
-  // Next month days to fill the last week
-  const remainingDays = 42 - days.length; // 6 rows of 7 days
+  // Next month days to complete 6 rows (42 days)
+  const remainingDays = 42 - days.length;
   for (let i = 1; i <= remainingDays; i++) {
     const d = new Date(year, month + 1, i);
     days.push({

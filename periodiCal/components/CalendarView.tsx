@@ -4,21 +4,19 @@ import { ThemedText } from './themed-text';
 import { CalendarDay } from '@/types/calendar';
 
 const { width } = Dimensions.get('window');
-const DAY_SIZE = (width - 48) / 7;
+const CALENDAR_PADDING = 16;
+const CALENDAR_WIDTH = width - 48; // Margin around container
+const DAY_SIZE = CALENDAR_WIDTH / 7;
 
 interface CalendarViewProps {
   days: CalendarDay[];
   onSelectDay: (day: CalendarDay) => void;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
   currentDate: Date;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ 
   days, 
   onSelectDay, 
-  onPrevMonth, 
-  onNextMonth, 
   currentDate 
 }) => {
   const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -28,13 +26,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={onPrevMonth} style={styles.navButton}>
-          <ThemedText style={styles.navButtonText}>{"<"}</ThemedText>
-        </Pressable>
         <ThemedText style={styles.monthTitle}>{monthName} {year}</ThemedText>
-        <Pressable onPress={onNextMonth} style={styles.navButton}>
-          <ThemedText style={styles.navButtonText}>{">"}</ThemedText>
-        </Pressable>
       </View>
       
       <View style={styles.weekHeader}>
@@ -51,7 +43,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               styles.dayContainer,
               day.isPeriodDay && styles.periodDay,
               !day.isCurrentMonth && styles.notCurrentMonth,
-              day.isToday && styles.todayMarker
+              day.isToday && !day.isPeriodDay && styles.todayMarker
             ]}
             onPress={() => onSelectDay(day)}
           >
@@ -76,17 +68,18 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
     borderRadius: 24,
-    padding: 16,
+    padding: CALENDAR_PADDING,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 5,
-    margin: 16,
+    marginHorizontal: 16,
+    width: CALENDAR_WIDTH + (CALENDAR_PADDING * 2),
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
@@ -97,7 +90,7 @@ const styles = StyleSheet.create({
   },
   weekHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
     marginBottom: 8,
   },
   weekDayText: {
@@ -114,7 +107,7 @@ const styles = StyleSheet.create({
   },
   dayContainer: {
     width: DAY_SIZE,
-    height: DAY_SIZE + 10,
+    height: DAY_SIZE + 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginVertical: 2,
@@ -154,15 +147,5 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#FFF',
     marginTop: 2,
-  },
-  navButton: {
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
-  },
-  navButtonText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#333',
   }
 });
