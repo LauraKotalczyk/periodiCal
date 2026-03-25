@@ -1,79 +1,72 @@
-import { db } from '../db/client';
-import { days, periodDays, symptoms } from '../db/schema';
-import { eq, and, between } from 'drizzle-orm';
+import { addDays, formatISO, isSameMonth, isToday, startOfISOWeek, startOfMonth } from "date-fns";
+import { CalendarDay } from "@/types/calendar-types";
+import { fetchMonthDataFromDb } from "@/db/calendar-queries";
 
-export class CalendarService {
-    static async getDays(userId: string, startDate: string, endDate: string) {
-        // Fetch all days in the range
-        const dayData: typeof days.$inferSelect[] = await db
-            .select()
-            .from(days)
-            .where(and(eq(days.userId, userId), between(days.date, startDate, endDate)));
+/**
+ * Creates the 42 calendar cell entries used for rendering the current calendar view shown to the user.
+ * @param viewingDate which month's page the calendar is turned to
+ * @returns flat 1D array of calendar days used to fill calendar grid viewed by the user
+ */
+export function getCalendarGridForMonth(viewingDate: Date): CalendarDay[] {
+    let calendarDays = []
+    
+    // 1. Get the 1st of the month the user is looking at
+    const firstOfMonth = startOfMonth(viewingDate);
 
-        // Fetch period days in the range
-        const periodDayData: typeof periodDays.$inferSelect[] = await db
-            .select()
-            .from(periodDays)
-            .where(and(eq(periodDays.userId, userId), between(periodDays.date, startDate, endDate)));
+    // 2. Get the Monday that starts the grid
+    // asking for the last Monday of this specific week to fill grid gaps (overlapping months, etc.)
+    const gridStartDate = startOfISOWeek(firstOfMonth);
+    
+    let current_date = gridStartDate;
 
-        // Fetch symptoms in the range
-        const symptomData: typeof symptoms.$inferSelect[] = await db
-            .select()
-            .from(symptoms)
-            .where(and(eq(symptoms.userId, userId), between(symptoms.date, startDate, endDate)));
-
-        // Map data into a format the frontend can use
-        const calendarData = dayData.map((day) => {
-            const periodDay = periodDayData.find((pd) => pd.date === day.date);
-            const daySymptoms = symptomData
-                .filter((symptom) => symptom.date === day.date)
-                .map((symptom) => symptom.symptom);
-
-            return {
-                date: day.date,
-                isPeriodDay: day.isPeriodDay,
-                intensity: periodDay?.intensity || null,
-                symptoms: daySymptoms,
-            };
-        });
-
-        return calendarData;
+    for (let index = 0; index < 42; index++) {
+        // generated day
+        let calendarDay: CalendarDay = {
+            dateString: formatISO(current_date, { representation: 'date' }),
+            dayNumber: current_date.getDate(),
+            // check if generated day is in the same month as the one user is viewing
+            isCurrentMonth: isSameMonth(current_date, firstOfMonth),
+            isItToday: isToday(current_date),
+            date: new Date(current_date)
+        };
+        
+        calendarDays.push(calendarDay);
+        current_date = addDays(current_date, 1);
     }
 
-    static async updateDayData(userId: string, date: string, data: { isPeriodDay: boolean, intensity: number | null, symptoms: string[] }) {
-        await db.transaction(async (tx) => {
-            // Updated days table
-            await tx.insert(days).values({
-                date,
-                userId,
-                isPeriodDay: data.isPeriodDay
-            }).onConflictDoUpdate({
-                target: [days.date, days.userId],
-                set: { isPeriodDay: data.isPeriodDay }
-            });
+    return calendarDays;
+}
 
-            // Update period_days table
-            await tx.delete(periodDays).where(and(eq(periodDays.date, date), eq(periodDays.userId, userId)));
-            if (data.isPeriodDay) {
-                await tx.insert(periodDays).values({
-                    periodId: `period-${date}`, // Simplified for now
-                    date,
-                    userId,
-                    intensity: data.intensity
-                });
-            }
+export async function fillCalendarGridWithDatabaseResults(viewingDate: Date, userId: string) {
+    let rawCalendarGrid: CalendarDay[] = getCalendarGridForMonth(viewingDate);
+    let startDate: string = rawCalendarGrid[0].dateString;
+    let endDate: string = rawCalendarGrid[41].dateString;
 
-            // Update symptoms table
-            await tx.delete(symptoms).where(and(eq(symptoms.date, date), eq(symptoms.userId, userId)));
-            for (const s of data.symptoms) {
-                await tx.insert(symptoms).values({
-                    symptomId: `${userId}-${date}-${s}`,
-                    date,
-                    userId,
-                    symptom: s
-                });
-            }
-        });
-    }
+    let monthData = await fetchMonthDataFromDb(userId, startDate, endDate);
+    // transform monthData to lookup map
+    let monthDataLookUp = new Map(monthData.map(item => [item.date, item]));
 
+    // for each of the calendar cells i.e. days, check if there is some database data, if so, set Metadata accordingly
+    const enrichedDays: CalendarDay[] = rawCalendarGrid.map((day: CalendarDay) => {
+        const dbEntry = monthDataLookUp.get(day.dateString);
+        
+        if (!dbEntry) return day; // if no additional data was recorded by the user, leave as is
+
+        return {
+            // could also use ...day to take everything from day, and only add the new fields
+            dateString: day.dateString, 
+            dayNumber: day.dayNumber,
+            isCurrentMonth: day.isCurrentMonth,
+            isItToday: day.isItToday,
+            date: day.date,
+
+            isPeriodDay: dbEntry.isPeriodDay ?? false,
+            intensity: dbEntry.periodDayInfo?.intensity ?? null,
+            symptoms: dbEntry.symptoms?.map((s: any) => s.symptom) || [],
+            notes: dbEntry.notes?.map((n: any) => n.note) || [],
+            hasSymptoms: dbEntry.symptoms?.length > 0,
+            hasNotes: dbEntry.notes?.length > 0,
+        }
+    });
+    return enrichedDays;
 }

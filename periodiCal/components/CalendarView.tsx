@@ -1,151 +1,134 @@
-import React from 'react';
-import { StyleSheet, View, Pressable, Dimensions } from 'react-native';
-import { ThemedText } from './themed-text';
-import { CalendarDay } from '@/types/calendar';
-
-const { width } = Dimensions.get('window');
-const CALENDAR_PADDING = 16;
-const CALENDAR_WIDTH = width - 48; // Margin around container
-const DAY_SIZE = CALENDAR_WIDTH / 7;
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { fillCalendarGridWithDatabaseResults } from "@/services/calendar-service";
+import { CalendarDay } from "@/types/calendar-types";
+import { DayCell } from "./DayCell"; // Make sure DayCell is also updated to use View/Text!
 
 interface CalendarViewProps {
-  days: CalendarDay[];
-  onSelectDay: (day: CalendarDay) => void;
-  currentDate: Date;
+  userId: string,
+  selectedDate: string,
+  onDayPress: (date: string) => void; // function to change the date
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ 
-  days, 
-  onSelectDay, 
-  currentDate 
-}) => {
-  const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  const monthName = currentDate.toLocaleString('default', { month: 'long' });
-  const year = currentDate.getFullYear();
+export default function CalendarView({ userId, selectedDate, onDayPress }: CalendarViewProps) {
+  const [viewingDate, setViewingDate] = useState(new Date());
+  const [days, setDays] = useState<CalendarDay[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const initCalendar = useCallback(async () => {
+    setIsLoading(true);
+    const data = await fillCalendarGridWithDatabaseResults(viewingDate, userId);
+    setDays(data);
+    setIsLoading(false);
+  }, [viewingDate, userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      initCalendar();
+    }, [initCalendar])
+  );
+
+  const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ef4444" />
+        <Text style={{ marginTop: 10 }}>Loading Calendar...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
+      {/* Month Header */}
       <View style={styles.header}>
-        <ThemedText style={styles.monthTitle}>{monthName} {year}</ThemedText>
+        <Text style={styles.monthTitle}>
+          {viewingDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+        </Text>
       </View>
-      
-      <View style={styles.weekHeader}>
-        {weekDays.map((day, index) => (
-          <ThemedText key={index} style={styles.weekDayText}>{day}</ThemedText>
+
+      {/* Weekday Labels Row */}
+      <View style={styles.weekdayLabelsRow}>
+        {weekdays.map(wd => (
+          <View key={wd} style={styles.weekdayCell}>
+            <Text style={styles.weekdayText}>{wd}</Text>
+          </View>
         ))}
       </View>
 
-      <View style={styles.daysGrid}>
-        {days.map((day) => (
-          <Pressable
-            key={day.date}
-            style={[
-              styles.dayContainer,
-              day.isPeriodDay && styles.periodDay,
-              !day.isCurrentMonth && styles.notCurrentMonth,
-              day.isToday && !day.isPeriodDay && styles.todayMarker
-            ]}
-            onPress={() => onSelectDay(day)}
-          >
-            <ThemedText 
-              style={[
-                styles.dayText,
-                day.isPeriodDay && styles.periodDayText,
-                !day.isCurrentMonth && styles.notCurrentMonthText
-              ]}
-            >
-              {day.dayOfMonth}
-            </ThemedText>
-            {day.isPeriodDay && <View style={styles.periodIndicator} />}
-          </Pressable>
+      {/* Days Grid */}
+      <View style={styles.grid}>
+        {days.map(day => (
+          <DayCell key={day.dateString} day={day} 
+          isSelected={day.dateString === selectedDate}
+          onPress={() => onDayPress(day.dateString)}
+          />
         ))}
       </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: CALENDAR_PADDING,
+    padding: 16,
+    margin: 12,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)', // More transparent for "Liquid Glass"
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)', // Subtle highlight edge
+    // iOS Shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 5,
-    marginHorizontal: 16,
-    width: CALENDAR_WIDTH + (CALENDAR_PADDING * 2),
+    shadowRadius: 12,
+    // Android Shadow
+    elevation: 3,
+  },
+  loadingContainer: {
+    height: 300,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingVertical: 30
   },
   monthTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: '#1c1c1e',
+    fontFamily: 'System',
+    letterSpacing: 0.35,
   },
-  weekHeader: {
+  weekdayLabelsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    width: '100%',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
     marginBottom: 8,
   },
-  weekDayText: {
-    width: DAY_SIZE,
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#999',
-  },
-  daysGrid: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
+    width: '100%',
   },
-  dayContainer: {
-    width: DAY_SIZE,
-    height: DAY_SIZE + 8,
-    justifyContent: 'center',
+  weekdayCell: {
+    width: '14.285%',
+    paddingVertical: 12,
     alignItems: 'center',
-    marginVertical: 2,
+    justifyContent: 'center',
   },
-  dayText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+  weekdayText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#8e8e93', // Apple secondary label color
+    textTransform: 'none',
+    letterSpacing: 0.5,
+    fontFamily: 'System',
   },
-  periodDay: {
-    backgroundColor: '#FF4D4D',
-    borderRadius: 12,
-    shadowColor: '#FF4D4D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  periodDayText: {
-    color: '#FFF',
-    fontWeight: '700',
-  },
-  notCurrentMonth: {
-    opacity: 0.3,
-  },
-  notCurrentMonthText: {
-    color: '#CCC',
-  },
-  todayMarker: {
-    borderWidth: 2,
-    borderColor: '#FF4D4D',
-    borderRadius: 12,
-  },
-  periodIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFF',
-    marginTop: 2,
-  }
 });
