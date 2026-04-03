@@ -2,14 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { fillCalendarGridWithDatabaseResults } from "@/services/calendar-service";
-import { CalendarDay } from "@/types/calendar-types";
+import { CalendarDay, CalendarViewProps } from "@/types/calendar-types";
 import { DayCell } from "./DayCell"; // Make sure DayCell is also updated to use View/Text!
-
-interface CalendarViewProps {
-  userId: string,
-  selectedDate: string,
-  onDayPress: (date: string) => void; // function to change the date
-}
 
 export default function CalendarView({ userId, selectedDate, onDayPress }: CalendarViewProps) {
   const [viewingDate, setViewingDate] = useState(new Date());

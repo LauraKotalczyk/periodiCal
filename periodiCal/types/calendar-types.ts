@@ -16,3 +16,15 @@ export interface DayMetadata {
 }
 
 export type CalendarDay = DayMetadata;
+
+export interface PeriodEntry {
+  intensity: number | null;
+  symptoms: string[],
+  notes: string
+}
+
+export interface CalendarViewProps {
+  userId: string,
+  selectedDate: string,
+  onDayPress: (date: string) => void; // function to change the date
+}

@@ -230,3 +230,31 @@ export async function setEndDate(userId: string, periodId: string, date: string)
       log.error("Transaction: Writing new periodEntry to database failed with: ", error);
     }
 }
+
+/**
+ * Fetches details of a particular day (if periodDay intensity, otherwise symptoms, notes)
+ * @param userId 
+ * @param date 
+ */
+export async function fetchDayDetails(userId: string, date: string) {
+  try {
+      const result = await db.query.days.findFirst({
+      where: (days, { and, eq }) => and(
+        eq(days.date, date),
+        eq(days.userId, userId)
+      ),
+      with: {
+        periodDayInfo: true,
+        symptoms: true,
+        notes: true,
+      }
+    });
+    if (!result) {
+    log.info("No day details found for day:", date);
+    }
+
+    return result;
+  } catch (error: any) {
+    log.error("Error while fetching dayDetails:", error);
+  }
+}
