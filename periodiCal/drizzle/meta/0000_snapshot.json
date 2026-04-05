@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5bb5edb0-590a-4308-a177-94e1b88c9e4d",
+  "id": "b1e47fa3-4362-41da-85be-2f7f3b33c07f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "days": {
@@ -80,6 +80,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {},
@@ -131,13 +138,6 @@
         "intensity": {
           "name": "intensity",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "symptoms": {
-          "name": "symptoms",
-          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -226,7 +226,7 @@
           "name": "endDate",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         }
       },

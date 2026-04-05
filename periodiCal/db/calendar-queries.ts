@@ -3,7 +3,6 @@ import { and, eq, gte, lte } from 'drizzle-orm';
 import { days, periodDays, periods } from './schema';
 import { log } from '@/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
-import { date } from 'drizzle-orm/mysql-core';
 
 /**
  * @param startDate date string of the first calendar square visible for the current viewed month
@@ -189,7 +188,8 @@ export async function fetchSelectedDayEntry(userId: string, selectedDate: string
   const result = await db.query.days.findFirst({
     columns: {
       date: true,
-      userId: true
+      userId: true,
+      isPeriodDay: true
     },
     where: and(
       eq(days.userId, userId),
@@ -198,9 +198,10 @@ export async function fetchSelectedDayEntry(userId: string, selectedDate: string
   });
 
   if (!result?.date) {
-    log.info("No date entry for: ", date);
+    log.info("No date entry for: ", selectedDate);
     return null;
   }
+  return result;
 }
 
 /**
@@ -229,6 +230,30 @@ export async function setEndDate(userId: string, periodId: string, date: string)
     } catch (error) {
       log.error("Transaction: Writing new periodEntry to database failed with: ", error);
     }
+}
+
+/**
+ * Removes a period day entry from both the periodDays and days (marking it as not a period day) table.
+ * 
+ * @param userId - The ID of the user
+ * @param date - The date of the period day to remove
+ */
+export async function deletePeriodDay(userId: string, date: string) {
+  try {
+    // 1. Delete from periodDays table
+    await db.delete(periodDays)
+      .where(and(eq(periodDays.userId, userId), eq(periodDays.date, date)));
+    
+    // 2. Update days table to set isPeriodDay to false
+    await db.update(days)
+      .set({ isPeriodDay: false })
+      .where(and(eq(days.userId, userId), eq(days.date, date)));
+
+    log.info(`Successfully unlogged period day for ${date}`);
+  } catch (error) {
+    log.error("Failed to delete period day:", error);
+    throw error;
+  }
 }
 
 /**

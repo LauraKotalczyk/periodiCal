@@ -19,8 +19,8 @@ export type CalendarDay = DayMetadata;
 
 export interface PeriodEntry {
   intensity: number | null;
-  symptoms: string[],
-  notes: string
+  symptoms: string[];
+  notes: string;
 }
 
 export interface CalendarViewProps {

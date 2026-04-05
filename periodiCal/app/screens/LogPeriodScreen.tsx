@@ -1,11 +1,12 @@
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { fetchDayDetails, fetchPeriod, insertNewPeriodDayIntoDaysTable, insertNewPeriodDayIntoPeriodDaysTable, insertNewPeriodIntoPeriodsTable, setEndDate } from "@/db/calendar-queries";
+import { deletePeriodDay, fetchDayDetails, fetchPeriod, insertNewPeriodDayIntoDaysTable, insertNewPeriodDayIntoPeriodDaysTable, insertNewPeriodIntoPeriodsTable, setEndDate } from "@/db/calendar-queries";
 import { log } from '@/utils/logger';
 import { useEffect, useState } from 'react';
 import { PeriodEntry } from '@/types/calendar-types';
-import { INTENSITY_OPTIONS } from '@/types/ui-style-constants';
+import { INTENSITY_OPTIONS, SYMPTOMS_OPTIONS } from '@/types/ui-style-constants';
 import { convertISOStringDateToPrintableDate } from '../../utils/utils';
+import { CircleCheckBig } from 'lucide-react-native';
 
 export default function LogPeriodScreen() {
   const router = useRouter();
@@ -29,10 +30,10 @@ export default function LogPeriodScreen() {
         setEntry({
           // Access nested data through the relation names
           intensity: data.periodDayInfo?.intensity ?? null,
-          
+
           // Map the symptoms array to just a list of names/IDs
-          symptoms: data.symptoms.map(s => s.symptom),
-          
+          symptoms: data.symptoms.map((s: any) => s.symptom),
+
           // Get the first note if it exists (assuming one note per day)
           notes: data.notes[0]?.note ?? "",
         });
@@ -42,7 +43,25 @@ export default function LogPeriodScreen() {
   }, [selectedDate, userId]);
 
   const updateIntensity = (val: any) => {
-    setEntry(prev => ({ ...prev, intensity: val }));
+    setEntry(prev => ({ ...prev, intensity: prev.intensity === val ? null : val }));
+  };
+
+  const updateSymptom = (val: any) => {
+    let updatedSymptomsList; 
+
+    if (periodEntry.symptoms.includes(val)) {
+      // If it's already there, create a list WITHOUT this value
+      updatedSymptomsList = periodEntry.symptoms.filter(s => s !== val);
+    } else {
+      // If it's NOT there, create a list WITH this value added
+      updatedSymptomsList = [...periodEntry.symptoms, val];
+    }
+
+    // Tell React to update the state so the screen refreshes
+    setEntry({
+      ...periodEntry,
+      symptoms: updatedSymptomsList
+    });
   };
 
   const isItemSelected = (type: 'intensity' | 'symptom', value: any) => {
@@ -53,14 +72,18 @@ export default function LogPeriodScreen() {
 
   console.log("SelectedDate is: ", selectedDate);
   async function addPeriodEntry() {
-    if (isSaving || !periodEntry.intensity) {
-      alert("Please select an intensity first!");
-      log.warn("No intensity selected. Unable to create periodEntry.");
-      return;
-    }
+    if (isSaving) return;
+    
     setIsSaving(true);
 
     try {
+      if (!periodEntry.intensity) {
+        // If intensity is null, we want to remove the period day entry
+        await deletePeriodDay(userId, selectedDate);
+        router.back();
+        return;
+      }
+
        const [periodId, startDate] = await fetchPeriod(selectedDate, userId);
 
        if (!periodId) {
@@ -107,29 +130,72 @@ export default function LogPeriodScreen() {
         <View style={styles.intensityContainer}>
           <Text style={styles.intensityTitle}>Flow Intensity</Text>
           <View style={styles.intensityDotsRow}>
-            {INTENSITY_OPTIONS.map((opt) => (
-              <TouchableOpacity
+            {INTENSITY_OPTIONS.map((opt) => {
+              const isSelected = isItemSelected('intensity', opt.value);
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  onPress={() => updateIntensity(opt.value)}
+                  disabled={isSaving}
+                  style={[
+                    styles.intensityButton,
+                    { backgroundColor: opt.color },
+                    isSelected && styles.activeButton,
+                  ]}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      {isSelected && (
+                        <View style={[styles.checkIconBadge, { borderColor: opt.color }]}>
+                          <CircleCheckBig size={16} color={opt.color} strokeWidth={4}/>
+                        </View>
+                      )}
+                      <Text style={styles.intensityButtonText}>{opt.label}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* SYMPTOMS */}
+        <View style={styles.symptomsContainer}>
+          <Text style={styles.symptomTitle}>Symptoms</Text>
+          <View style={styles.symptomsDotsGrid}>
+            {SYMPTOMS_OPTIONS.map((opt) => {
+              const isSelected = isItemSelected('symptom', opt.value);
+             return (<TouchableOpacity
                 key={opt.value}
-                onPress={() => updateIntensity(opt.value)}
+                onPress={() => updateSymptom(opt.value)}
                 disabled={isSaving}
                 style={[
-                  styles.intensityButton,
+                  styles.symptomButton,
                   { backgroundColor: opt.color },
-                  isItemSelected('intensity', opt.value) && styles.activeButton,
+                  isSelected && styles.activeSymptomButton,
                 ]}
               >
                 {isSaving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.intensityButtonText}>{opt.label}</Text>
+                  <>
+                    {isSelected && (
+                      <View style={[styles.checkIconBadge, { borderColor: opt.color }]}>
+                        <CircleCheckBig size={16} color={opt.color} strokeWidth={4}/>
+                      </View>
+                    )}
+                    <Text style={styles.symptomButtonText}>{opt.label}</Text>
+                  </>
                 )}
               </TouchableOpacity>
-            ))}
+             );
+          })}
           </View>
         </View>
-      </ScrollView>
 
-      {/* FOOTER SAVE BUTTON */}
+        {/* FOOTER SAVE BUTTON */}
       <View style={styles.footer}>
         <TouchableOpacity 
           onPress={() => addPeriodEntry()}
@@ -139,13 +205,21 @@ export default function LogPeriodScreen() {
           <Text style={styles.saveButtonText}>Save Entry</Text>
         </TouchableOpacity>
       </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outerContainer: { flex: 1, backgroundColor: '#ffffffaf' },
-  scrollContent: { padding: 24, paddingBottom: 100 },
+  outerContainer: { 
+    flex: 1, 
+    backgroundColor: '#ffffffaf',
+  },
+  scrollContent: { 
+    padding: 24, 
+    paddingBottom: 100,
+    gap: 20
+  },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -153,8 +227,8 @@ const styles = StyleSheet.create({
     marginBottom: 30 
   },
   title: { fontSize: 24, fontWeight: '700' },
-  cancelText: { color: '#007AFF', fontSize: 16, marginTop: 6 },
-  dateSubtitle: { fontSize: 16, color: '#666', marginTop: 4 },
+  cancelText: { color: '#007AFF', fontSize: 17, marginTop: 6 },
+  dateSubtitle: { fontSize: 17, color: '#666', marginTop: 4 },
   intensityContainer: {
     backgroundColor: '#f0f0f4',
     padding: 12,
@@ -163,7 +237,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -8,
   },
   intensityTitle: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
     color: '#8e8e93',
     textTransform: 'uppercase',
@@ -182,8 +256,9 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  intensityButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  intensityButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   footer: {
     position: 'absolute',
     bottom: 40,
@@ -202,7 +277,61 @@ const styles = StyleSheet.create({
   },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   activeButton: {
-    borderWidth: 4,
-    borderColor: '#000',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.2)',
+    elevation: 4,
+  },
+  symptomsContainer: {
+    backgroundColor: '#f0f0f4',
+    padding: 12,
+    borderRadius: 24,
+    alignSelf: 'stretch',
+    marginHorizontal: -8,
+  },
+  symptomsDotsGrid: {
+    flexDirection: 'row', // Horizontal layout
+    flexWrap: 'wrap',     // Allows jumping to the next line
+    gap: 10,
+    flexGrow: 1,
+    position: 'relative',
+  },
+  symptomButton: {
+    flexGrow: 1,          // This tells the bubble to expand to fill empty space
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '28%',      // Ensures at least 3 items per row usually
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    position: 'relative', // Added for absolute positioning of checkmark
+  },
+  symptomButtonText: {
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '700',
+  },
+  activeSymptomButton: {
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.2)', // Soft dark overlay
+    elevation: 4,
+  },
+  checkIconBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#fff', // White background for a softer, cleaner look
+    borderRadius: 10,
+    padding: 2,
+    zIndex: 1,
+    borderWidth: 2,
+  },
+   symptomTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#8e8e93',
+    textTransform: 'uppercase',
+    marginBottom: 14,
+    marginLeft: 6,
+    letterSpacing: 0.8,
   },
 });
