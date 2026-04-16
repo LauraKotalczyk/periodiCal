@@ -69,7 +69,7 @@ export const daysRelations = relations(days, ({ many, one }) => ({
 // Map the other side
 export const symptomsRelations = relations(symptoms, ({ one }) => ({
   day: one(days, { // every single row in symptoms table belong to exactly one day
-    // Todo: Maybe needs a change, since symptoms are planned to be a predefined list
+    // TODO: Maybe needs a change, since symptoms are planned to be a predefined list
     fields: [symptoms.date, symptoms.userId],
     references: [days.date, days.userId],
   }),

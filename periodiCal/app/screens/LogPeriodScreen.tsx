@@ -80,6 +80,7 @@ export default function LogPeriodScreen() {
       if (!periodEntry.intensity) {
         // If intensity is null, we want to remove the period day entry
         await deletePeriodDay(userId, selectedDate);
+        
         router.back();
         return;
       }

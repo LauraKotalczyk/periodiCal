@@ -1,5 +1,5 @@
 import { db } from '@/db/client';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, count, eq, gte, lte, max, min } from 'drizzle-orm';
 import { days, periodDays, periods } from './schema';
 import { log } from '@/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -240,19 +240,65 @@ export async function setEndDate(userId: string, periodId: string, date: string)
  */
 export async function deletePeriodDay(userId: string, date: string) {
   try {
-    // 1. Delete from periodDays table
-    await db.delete(periodDays)
-      .where(and(eq(periodDays.userId, userId), eq(periodDays.date, date)));
-    
-    // 2. Update days table to set isPeriodDay to false
-    await db.update(days)
-      .set({ isPeriodDay: false })
-      .where(and(eq(days.userId, userId), eq(days.date, date)));
+    // Wrap everything in a transaction (tx)
+    // If any part fails, the DB rolls back to how it was before we started
+    await db.transaction(async (tx) => {
+      
+      // Get the periodId before the day is deleted
+      const dayRecord = await tx.query.periodDays.findFirst({
+        where: (periodDays, { and, eq }) => and(eq(periodDays.userId, userId), eq(periodDays.date, date)),
+      });
 
-    log.info(`Successfully unlogged period day for ${date}`);
+      if (!dayRecord) {
+        log.info("No period day found to delete.");
+        return;
+      }
+
+      // Object Destructuring == dayRecord.periodId
+      const { periodId } = dayRecord;
+      // Delete entry in periodDays table
+      await tx.delete(periodDays)
+        .where(and(eq(periodDays.userId, userId), eq(periodDays.date, date)));
+
+      // Update the 'days' table helper (mark that it's no longer a period day)
+      await tx.update(days)
+        .set({ isPeriodDay: false })
+        .where(and(eq(days.userId, userId), eq(days.date, date)));
+
+      // Reconcile: Check how many days remain in this specific period
+      // We use aggregate functions to get the count and the new boundaries at once
+      const stats = await tx
+        .select({
+          remainingCount: count(),
+          newStartDate: min(periodDays.date),
+          newEndDate: max(periodDays.date),
+        })
+        .from(periodDays)
+        .where(eq(periodDays.periodId, periodId));
+
+      const { remainingCount, newStartDate, newEndDate } = stats[0];
+
+      if (remainingCount === 0) {
+        // CASE A: No days left, delete the period entirely
+        log.info(`Period ${periodId} is now empty. Deleting period record.`);
+        await tx.delete(periods).where(eq(periods.periodId, periodId));
+      } else {
+        // CASE B: Days still exist, update the period's boundaries
+        // (In case the user deleted the first or last day of the period)
+        log.info(`Period ${periodId} still has ${remainingCount} days. Updating boundaries.`);
+        await tx.update(periods)
+          .set({ 
+            startDate: newStartDate as string, 
+            endDate: newEndDate as string 
+          })
+          .where(eq(periods.periodId, periodId));
+      }
+    });
+
+    log.info(`Successfully processed deletion for ${date}`);
   } catch (error) {
-    log.error("Failed to delete period day:", error);
-    throw error;
+    log.error("Transaction Failed: deletePeriodDay error:", error);
+    throw error; // TODO: Re-throw so the UI can handle the error (e.g., show an alert)
   }
 }
 

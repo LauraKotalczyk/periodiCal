@@ -36,12 +36,16 @@ export default function RootLayout() {
     log.info("Connection to the Database established successfully.");
   } 
   else {
-    // Todo: Figure out what to do
+    // TODO: Figure out what to do
     log.error("Connection to the Database failed.");
   }
 
   if (migrationError) {
     log.error("Migration Error: ", migrationError);
+  }
+
+  if (!success) {
+    return null; // Or a loading spinner
   }
 
   return (
