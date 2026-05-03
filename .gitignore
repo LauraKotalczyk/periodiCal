@@ -5,15 +5,15 @@ node_modules/
 .DS_Store
 ../.expo/*
 expo-*
+.gitignore
+periodiCal/package-lock.json
+
 
 periodiCal/package-lock.json
 periodiCal/.expo/*
 
+# Project Management Notes
 Notes.md
-
 Requirements.md
 Theme_Ideas.md
-.gitignore
 ToDos.md
-periodiCal/package-lock.json
-periodiCal/package-lock.json
