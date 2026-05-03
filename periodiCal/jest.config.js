@@ -1,6 +1,18 @@
 
 
 const config = {
+  collectCoverage: true,
+  coverageProvider: 'v8',
+  collectCoverageFrom: [
+    '**/*.{ts,tsx,js,jsx}',
+    '!**/coverage/**',
+    '!**/node_modules/**',
+    '!**/babel.config.js',
+    '!**/expo-env.d.ts',
+    '!**/.expo/**',
+    '!**/__tests__/**',               // don't count test files themselves
+    '!**/*.test.{ts,tsx,js,jsx}',     // alternative pattern
+  ],
   preset: 'jest-expo',
   transformIgnorePatterns: [
     // This is crucial: allow jest-expo to transpile Expo and React Native modules
