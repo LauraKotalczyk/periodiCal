@@ -65,4 +65,44 @@ describe('fetchDayDetails', () => {
     const result = await fetchDayDetails(testUser.userId, periodDay.date);
     expect(result).toBeFalsy();
   });
+
+  it('returns a day with period info if present', async () => {
+  
+  });
+
+  it('returns a day with respective notes', async () => {
+  
+  });
+});
+
+describe('deletePeriodDay', () => {
+
+});
+
+describe('setEndDate', () => {
+
+});
+
+describe('fetchSelectedDayEntry', () => {
+
+});
+
+describe('insertNewPeriodDayIntoDaysTable', () => {
+
+});
+
+describe('insertNewPeriodDayIntoPeriodDaysTable', () => {
+
+});
+
+describe('insertNewPeriodIntoPeriodsTable', () => {
+
+});
+
+describe('fetchMonthDataFromDb', () => {
+
+});
+
+describe('fetchPeriod', () => {
+  
 });
