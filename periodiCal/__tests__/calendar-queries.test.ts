@@ -1,8 +1,9 @@
 import { cleanTestDatabase, createTestDatabase } from './test-utils/db';
 import { days, symptoms, periodDays, users, notes, periods } from '../db/schema';
-import { fetchDayDetails } from '../db/calendar-queries';
-import { notPeriodDay, oneSymptomEntry, periodDay, testUser } from './test-utils/test-profiles';
+import { fetchDayDetails, setEndDate } from '../db/calendar-queries';
+import { notPeriodDay, oneSymptomEntry, periodDay, periodWithDurationOne, testUser } from './test-utils/test-profiles';
 import { date } from 'drizzle-orm/mysql-core';
+import { log } from "console";
 
 // Mocked database
 let testDb: ReturnType<typeof createTestDatabase>;
@@ -49,7 +50,8 @@ describe('fetchDayDetails', () => {
   it('returns a day with its multiple symptoms and period info when present', async () => {
     testDb.insert(users).values(testUser).run();
     testDb.insert(days).values(periodDay).run();
-    testDb.insert(symptoms).values(oneSymptomEntry).run();
+    // Reusing periodDay date and userId for symptom entry to satisfy FK
+    testDb.insert(symptoms).values({ ...oneSymptomEntry, date: periodDay.date, userId: testUser.userId }).run();
 
     const result = await fetchDayDetails(testUser.userId, periodDay.date);
 
@@ -80,7 +82,36 @@ describe('deletePeriodDay', () => {
 });
 
 describe('setEndDate', () => {
+  beforeAll(() => {
+    testDb = createTestDatabase();
+  });
 
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+  
+  const _periodId: string = periodWithDurationOne.periodId;
+  const _userId: string = periodWithDurationOne.userId;
+  const _startDate: string = periodWithDurationOne.startDate;
+
+  it('if period entry does not exist', async () => {
+    const result = await setEndDate(_userId, _periodId, _startDate);
+
+    expect(result).toHaveLength(0);
+  });
+
+  it('sets endDate of period with existing periodId successfully', async () => {
+    testDb.insert(users).values(testUser).run(); // to satisfy FK constraint
+    testDb.insert(periods).values(periodWithDurationOne).run();
+
+    const result = await setEndDate(_userId, _periodId, '2026-05-05');
+
+    expect(result).toBeDefined();
+    if (result) {
+      expect(result).toHaveLength(1);
+      expect(result[0].endDate).toBe("2026-05-05");
+    }
+  });
 });
 
 describe('fetchSelectedDayEntry', () => {
@@ -104,5 +135,5 @@ describe('fetchMonthDataFromDb', () => {
 });
 
 describe('fetchPeriod', () => {
-  
+
 });

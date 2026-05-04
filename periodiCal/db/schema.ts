@@ -12,7 +12,7 @@ export const periods = sqliteTable("periods", {
     periodId: text().primaryKey(),
     userId: text().references(() => users.userId).notNull(),
     startDate: text().notNull(), // Start date of the period (not a FK)
-    endDate: text()    // End date of the period (not a FK)
+    endDate: text().notNull()    // End date of the period (not a FK)
 });
 
 export const days = sqliteTable("days", {

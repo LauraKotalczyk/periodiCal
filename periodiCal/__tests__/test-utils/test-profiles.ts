@@ -1,6 +1,6 @@
 export const testUser: any = {
     userId: "TestUser01", 
-    name: 'Test-User01', 
+    name: 'TestUser01', 
     age: 30 
 }
 
@@ -28,4 +28,11 @@ export const twoSymptomEntry: any = { // TODO: check how they are handed over
     date: '2025-01-10',
     userId: testUser.userId,
     symptom: 'Headache' 
+}
+
+export const periodWithDurationOne: any = {
+    periodId: 'TestPeriod01',
+    userId: testUser.userId,
+    startDate: '2026-05-04',
+    endDate: '2026-05-04' // one periodEntry so far
 }
