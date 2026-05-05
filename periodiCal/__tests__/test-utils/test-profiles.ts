@@ -11,6 +11,12 @@ export const periodDay: any = {
     isPeriodDay: true
 }
 
+export const periodDayTwo: any = {
+    date: '2026-05-05',
+    userId: testUser.userId,
+    isPeriodDay: true
+}
+
 export const notPeriodDay: any = {
     date: '2026-05-05',
     userId: testUser.userId,

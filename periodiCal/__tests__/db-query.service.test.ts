@@ -85,7 +85,8 @@ describe('deletePeriodDay', () => {
   const _userId: string = periodWithDurationOne.userId;
   const _startDate: string = periodWithDurationOne.startDate;
 
-  it('removes a period day entry from the periodDays, periods and days table if no period exists yet', () => {
+  // TODO: make sure to cover symptoms / notes as well somewhere
+  it('removes a period day entry from the periodDays, periods and days table if no other period days exist yet', () => {
     testDb.insert(users).values(testUser).run();
     testDb.insert(days).values(periodDay).run(); // mark as period day
     testDb.insert(periods).values(periodWithDurationOne).run();   // the period itself
@@ -123,8 +124,12 @@ describe('deletePeriodDay', () => {
     expect(dayResult[0].isPeriodDay).toBe(false);
   });
 
-  it('removes a period day entry from both the periodDays and days table and updates period endDate', async () => {
-
+  it('removes a period day entry from both the periodDays, periods and days table and updates period endDate', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run(); // mark as period day
+    testDb.insert(periods).values(periodWithDurationOne).run();   // the period itself
+    testDb.insert(periodDays).values(periodDayEntry).run();
+        
   });
 
   // TODO: if user doesn't exist

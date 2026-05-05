@@ -12,6 +12,8 @@ periodiCal/package-lock.json
 periodiCal/package-lock.json
 periodiCal/.expo/
 periodiCal/coverage/
+**/coverage/
+coverage/
 
 # Project Management Notes
 Notes.md
