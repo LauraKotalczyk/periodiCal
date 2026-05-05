@@ -1,9 +1,10 @@
 import { cleanTestDatabase, createTestDatabase } from './test-utils/db';
 import { days, symptoms, periodDays, users, notes, periods } from '../db/schema';
-import { fetchDayDetails, setEndDate } from '../db/calendar-queries';
-import { notPeriodDay, oneSymptomEntry, periodDay, periodWithDurationOne, testUser } from './test-utils/test-profiles';
+import { deletePeriodDay, fetchDayDetails, setEndDate } from '../services/db-query-service';
+import { notPeriodDay, oneSymptomEntry, periodDay, periodDayEntry, periodWithDurationOne, testUser } from './test-utils/test-profiles';
 import { date } from 'drizzle-orm/mysql-core';
 import { log } from "console";
+import { and, eq} from 'drizzle-orm';
 
 // Mocked database
 let testDb: ReturnType<typeof createTestDatabase>;
@@ -24,12 +25,6 @@ describe('fetchDayDetails', () => {
   beforeEach(() => {
     cleanTestDatabase(testDb);
   });
-
-/**
- * USER-TABLE RELATED
- */
- 
-
 
   it('returns a day with its one symptom and null for period info if not present', async () => {
     testDb.insert(users).values({ userId: testUser.userId, name: testUser.name, age: testUser.age }).run();
@@ -78,7 +73,71 @@ describe('fetchDayDetails', () => {
 });
 
 describe('deletePeriodDay', () => {
+   beforeAll(() => {
+    testDb = createTestDatabase();
+  });
 
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+
+  const _periodId: string = periodWithDurationOne.periodId;
+  const _userId: string = periodWithDurationOne.userId;
+  const _startDate: string = periodWithDurationOne.startDate;
+
+  it('removes a period day entry from the periodDays, periods and days table if no period exists yet', () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run(); // mark as period day
+    testDb.insert(periods).values(periodWithDurationOne).run();   // the period itself
+    testDb.insert(periodDays).values(periodDayEntry).run();
+
+    deletePeriodDay(_userId, _startDate);
+
+    // Assert: periodDays row should be gone
+    const pdResult = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _startDate), eq(periodDays.periodId, _periodId))
+      )
+      .all();
+    expect(pdResult).toHaveLength(0);
+
+    // Assert: the period itself should be deleted because it had no days left
+    const periodResult = testDb
+      .select()
+      .from(periods)
+      .where(
+        and(eq(periods.periodId, _periodId), eq(periods.userId, _userId))
+      )
+      .all();
+    expect(periodResult).toHaveLength(0);
+
+    // Assert: the day still exists but isPeriodDay must now be false
+    const dayResult = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _startDate)))
+      .all();
+    expect(dayResult).toHaveLength(1);
+    expect(dayResult[0].isPeriodDay).toBe(false);
+  });
+
+  it('removes a period day entry from both the periodDays and days table and updates period endDate', async () => {
+
+  });
+
+  // TODO: if user doesn't exist
+
+  // TODO: if periodEntry doesn't exist
+
+  // TODO: if periodEntry doesn't exist for that user
+
+  //TODO: if entry to be removed is startDate, expect....
+
+  //TODO: if entry to be removed is date somewhere in the middle, expect...
+
+  //TODO: if no day remains for the respective periodId (i.e. to remove is the last periodEntry) remove entire period from db
 });
 
 describe('setEndDate', () => {
@@ -96,7 +155,7 @@ describe('setEndDate', () => {
 
   it('if period entry does not exist', async () => {
     const result = await setEndDate(_userId, _periodId, _startDate);
-
+    
     expect(result).toHaveLength(0);
   });
 

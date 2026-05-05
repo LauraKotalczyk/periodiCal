@@ -10,8 +10,8 @@ periodiCal/package-lock.json
 
 
 periodiCal/package-lock.json
-periodiCal/.expo/*
-periodiCal/coverage/*
+periodiCal/.expo/
+periodiCal/coverage/
 
 # Project Management Notes
 Notes.md
