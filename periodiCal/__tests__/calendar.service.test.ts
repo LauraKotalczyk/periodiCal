@@ -10,7 +10,7 @@ jest.mock('../db/client', () => ({
   get db() {
     return testDb;
   },
-}));
+})); 
 
 describe('calendar-service', () => {
   beforeAll(() => {

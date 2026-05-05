@@ -44,9 +44,23 @@ export const periodWithDurationOne: any = {
     endDate: '2026-05-04' // one periodEntry so far
 }
 
+export const periodWithDurationTwo: any = {
+    periodId: 'TestPeriod01',
+    userId: testUser.userId,
+    startDate: '2026-05-04',
+    endDate: '2026-05-05' // one periodEntry so far
+}
+
 export const periodDayEntry: any = {
     periodId: periodWithDurationOne.periodId,
     date: periodWithDurationOne.startDate,
     userId: periodWithDurationOne.userId,
     intensity: 1
+}
+
+export const periodDayEntryTwo: any = {
+    periodId: periodWithDurationOne.periodId,
+    date: periodWithDurationTwo.endDate,
+    userId: periodWithDurationOne.userId,
+    intensity: 2
 }
