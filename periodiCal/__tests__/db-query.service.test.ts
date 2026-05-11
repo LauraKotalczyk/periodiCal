@@ -81,9 +81,10 @@ describe('deletePeriodDay', () => {
     cleanTestDatabase(testDb);
   });
 
-  const _periodId: string = periodWithDurationOne.periodId;
-  const _userId: string = periodWithDurationOne.userId;
-  const _startDate: string = periodWithDurationOne.startDate;
+  const _periodId: string = periodWithDurationTwo.periodId;
+  const _userId: string = periodWithDurationTwo.userId;
+  const _startDate: string = periodWithDurationTwo.startDate;
+  const _endDate: string = periodWithDurationTwo.setEndDate;
 
   // TODO: make sure to cover symptoms / notes as well somewhere
   it('removes a period day entry from the periodDays, periods and days table if no other period days exist yet', () => {
@@ -182,8 +183,64 @@ describe('deletePeriodDay', () => {
   });
 
   // removes a period day entry from both the periodDays, periods and days table and updates period startDate (remove first)
+  it('removes a period day entry from both the periodDays, periods and days table and updates period startDate', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run(); // mark as period day
+    testDb.insert(days).values(periodDayTwo).run(); // mark as period day
+    testDb.insert(periods).values(periodWithDurationTwo).run();
+    testDb.insert(periodDays).values(periodDayEntry).run();
+    testDb.insert(periodDays).values(periodDayEntryTwo).run();
 
-  // TODO: if user doesn't exist
+    const pdResultLengthBeforeDeletion = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _startDate), eq(periodDays.periodId, _periodId))
+      )
+      .all().length;
+    
+    const daysResultBeforeDeletion = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _startDate)))
+      .all();
+
+    deletePeriodDay(_userId, _endDate);
+
+    // Assert: periodDays row should be gone
+    const pdResultAfterDeletion = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _endDate), eq(periodDays.periodId, _periodId))
+      )
+      .all();
+
+    expect(pdResultAfterDeletion).toHaveLength(pdResultLengthBeforeDeletion - 1);
+    
+    // Assert: the period start date should be different, but the period should still exist
+    const periodResult = testDb
+      .select()
+      .from(periods)
+      .where(
+        and(eq(periods.periodId, _periodId), eq(periods.userId, _userId))
+      )
+      .all();
+
+    expect(periodResult[0].startDate).toBe(_endDate);
+    expect(periodResult[0].periodId).toBe(_periodId);
+
+    // TODO: the endDate should be removed if no symptoms etc are present, otherwise isPeriodDay must now be false
+    const dayResultAfterDeletion = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _endDate)))
+      .all();
+    
+    expect(dayResultAfterDeletion.length).toHaveLength(daysResultBeforeDeletion.length - 1);
+    expect(dayResultAfterDeletion[0].date).toBe(_endDate);
+    expect(dayResultAfterDeletion[0].isPeriodDay).toBeTruthy();
+  });
 
   // TODO: if periodEntry doesn't exist
 
