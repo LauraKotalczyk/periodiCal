@@ -1,6 +1,6 @@
 import { cleanTestDatabase, createTestDatabase } from './test-utils/db';
 import { days, symptoms, periodDays, users, notes, periods } from '../db/schema';
-import { deletePeriodDay, fetchDayDetails, setEndDate } from '../services/db-query-service';
+import { deletePeriodDay, fetchDayDetails, fetchSelectedDayEntry, setEndDate } from '../services/db-query-service';
 import { notPeriodDay, oneSymptomEntry, periodDay, periodDayEntry, periodDayEntryTwo, periodDayTwo, periodWithDurationOne, periodWithDurationTwo, testUser } from './test-utils/test-profiles';
 import { date } from 'drizzle-orm/mysql-core';
 import { log } from "console";
@@ -284,10 +284,41 @@ describe('setEndDate', () => {
       expect(result[0].endDate).toBe("2026-05-05");
     }
   });
+
 });
 
 describe('fetchSelectedDayEntry', () => {
-      
+  beforeAll(() => {
+    testDb = createTestDatabase();
+  });
+
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+  
+  const _userId: string = periodDay.userId;
+  const _date: string = periodDay.date;
+  const isPeriodDay: boolean = periodDay.isPeriodDay;
+
+  it('returns null if selected dayEntry does not exist', async () => {
+    testDb.insert(users).values(testUser).run();
+    const result = await fetchSelectedDayEntry(_userId, _date);
+
+    expect(result).toBeNull();
+  });
+
+  it('returns correct dayEntry if selected dayEntry exists', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run();
+
+    const result = await fetchSelectedDayEntry(_userId, _date);
+
+    expect(result).toBeDefined();
+    expect(result?.userId).toBe(_userId);
+    expect(result?.date).toBe(_date);
+    expect(result?.isPeriodDay).toBe(isPeriodDay);
+
+  });
 });
 
 describe('insertNewPeriodDayIntoDaysTable', () => {
