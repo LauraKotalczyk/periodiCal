@@ -1,6 +1,6 @@
 import { cleanTestDatabase, createTestDatabase } from './test-utils/db';
 import { days, symptoms, periodDays, users, notes, periods } from '../db/schema';
-import { deletePeriodDay, fetchDayDetails, fetchSelectedDayEntry, setEndDate } from '../services/db-query-service';
+import { deletePeriodDay, fetchDayDetails, fetchPeriod, fetchSelectedDayEntry, setEndDate } from '../services/db-query-service';
 import { notPeriodDay, oneSymptomEntry, periodDay, periodDayEntry, periodDayEntryTwo, periodDayTwo, periodWithDurationOne, periodWithDurationTwo, testUser } from './test-utils/test-profiles';
 import { date } from 'drizzle-orm/mysql-core';
 import { log } from "console";
@@ -317,7 +317,6 @@ describe('fetchSelectedDayEntry', () => {
     expect(result?.userId).toBe(_userId);
     expect(result?.date).toBe(_date);
     expect(result?.isPeriodDay).toBe(isPeriodDay);
-
   });
 });
 
@@ -334,9 +333,54 @@ describe('insertNewPeriodIntoPeriodsTable', () => {
 });
 
 describe('fetchMonthDataFromDb', () => {
-
+  
 });
 
 describe('fetchPeriod', () => {
+  beforeAll(() => {
+    testDb = createTestDatabase();
+  });
 
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+  
+  const _userId: string = periodDay.userId;
+
+  it('returns null if no active period exists for current user', async () => {
+    testDb.insert(users).values(testUser).run();
+
+    const result = await fetchPeriod(periodDayTwo.date, _userId);
+    
+    expect(result).toBeDefined();
+
+    if (result) {
+      // returns [periodId, startDate]
+      expect(result?.[0]).toBeNull();
+      expect(result?.[1]).toBeNull();
+    }
+  });
+
+  // one symptom entry, multi-day period
+  it('returns active period if one exists for current user', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run();
+    testDb.insert(days).values(periodDayTwo).run();
+    testDb.insert(symptoms).values(oneSymptomEntry).run();
+    testDb.insert(periods).values(periodWithDurationTwo).run();
+    testDb.insert(periodDays).values(periodDayEntry).run();
+    testDb.insert(periodDays).values(periodDayEntryTwo).run();
+
+    const result = await fetchPeriod(periodDayTwo.date, _userId);
+
+    expect(result).toBeDefined();
+    
+    if (result) {
+      // returns [periodId, startDate]
+      expect(result?.[0]).toBe(periodWithDurationTwo.periodId);
+      expect(result?.[1]).toBe(periodWithDurationTwo.startDate);
+    }
+  });
+  
+   // TODO: multiple symptom entries
 });

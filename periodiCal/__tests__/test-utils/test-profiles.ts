@@ -1,4 +1,4 @@
-import { periodDays } from '../../db/schema';
+import { periodDays, users } from '../../db/schema';
 export const testUser: any = {
     userId: 'TestUser01', 
     name: 'TestUser01', 
@@ -26,7 +26,7 @@ export const notPeriodDay: any = {
 export const oneSymptomEntry: any = {
     symptomId: 's1',
     date: '2026-05-04',
-    userId: 'test01',
+    userId: testUser.userId,
     symptom: 'Headache' 
 }
 
