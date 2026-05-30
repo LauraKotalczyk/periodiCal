@@ -1,6 +1,6 @@
 import { addDays, formatISO, isSameMonth, isToday, startOfISOWeek, startOfMonth } from "date-fns";
 import { CalendarDay } from "@/types/calendar-types";
-import { fetchMonthDataFromDb } from "@/db/calendar-queries";
+import { fetchMonthDataFromDb } from "@/services/db-query-service";
 
 /**
  * Creates the 42 calendar cell entries used for rendering the current calendar view shown to the user.

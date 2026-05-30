@@ -1,0 +1,386 @@
+import { cleanTestDatabase, createTestDatabase } from './test-utils/db';
+import { days, symptoms, periodDays, users, notes, periods } from '../db/schema';
+import { deletePeriodDay, fetchDayDetails, fetchPeriod, fetchSelectedDayEntry, setEndDate } from '../services/db-query-service';
+import { notPeriodDay, oneSymptomEntry, periodDay, periodDayEntry, periodDayEntryTwo, periodDayTwo, periodWithDurationOne, periodWithDurationTwo, testUser } from './test-utils/test-profiles';
+import { date } from 'drizzle-orm/mysql-core';
+import { log } from "console";
+import { and, eq} from 'drizzle-orm';
+
+// Mocked database
+let testDb: ReturnType<typeof createTestDatabase>;
+
+// Mock the client so that `db` inside calendar-queries becomes testDb
+jest.mock('../db/client', () => ({
+  __esModule: true,
+  get db() {
+    return testDb;
+  },
+}));
+
+describe('fetchDayDetails', () => {
+  beforeAll(() => {
+    testDb = createTestDatabase();
+  });
+
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+
+  it('returns a day with its one symptom and null for period info if not present', async () => {
+    testDb.insert(users).values({ userId: testUser.userId, name: testUser.name, age: testUser.age }).run();
+    testDb.insert(days).values({ userId: testUser.userId, date: notPeriodDay.date, isPeriodDay: notPeriodDay.isPeriodDay }).run();
+    testDb.insert(symptoms).values({ symptomId: 's1', date: notPeriodDay.date, userId: testUser.userId, symptom: oneSymptomEntry.symptom }).run();
+
+    const result = await fetchDayDetails(testUser.userId, notPeriodDay.date);
+
+    expect(result).toBeTruthy();
+    expect(result?.date).toBe(notPeriodDay.date);
+    expect(result?.symptoms).toHaveLength(1);
+    expect(result?.symptoms[0].symptom).toBe(oneSymptomEntry.symptom);
+    // periodDayInfo will be null because we didn't insert any
+    expect(result?.periodDayInfo).toBeNull();
+  });
+
+  // TODO: check how to check multiple symptoms! check how to independently test periods and periodDays  table insertion...
+  it('returns a day with its multiple symptoms and period info when present', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run();
+    // Reusing periodDay date and userId for symptom entry to satisfy FK
+    testDb.insert(symptoms).values({ ...oneSymptomEntry, date: periodDay.date, userId: testUser.userId }).run();
+
+    const result = await fetchDayDetails(testUser.userId, periodDay.date);
+
+    expect(result).toBeTruthy();
+    expect(result?.date).toBe('2025-01-10');
+    expect(result?.symptoms).toHaveLength(1);
+    expect(result?.symptoms[0].symptom).toBe('Headache');
+    // periodDayInfo will be null because we didn't insert any
+    expect(result?.periodDayInfo).toBeNull();
+  });
+
+  it('returns null when the day does not exist', async () => {
+    const result = await fetchDayDetails(testUser.userId, periodDay.date);
+    expect(result).toBeFalsy();
+  });
+
+  it('returns a day with period info if present', async () => {
+  
+  });
+
+  it('returns a day with respective notes', async () => {
+  
+  });
+});
+
+describe('deletePeriodDay', () => {
+   beforeAll(() => {
+    testDb = createTestDatabase();
+  });
+
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+
+  const _periodId: string = periodWithDurationTwo.periodId;
+  const _userId: string = periodWithDurationTwo.userId;
+  const _startDate: string = periodWithDurationTwo.startDate;
+  const _endDate: string = periodWithDurationTwo.setEndDate;
+
+  // TODO: make sure to cover symptoms / notes as well somewhere
+  it('removes a period day entry from the periodDays, periods and days table if no other period days exist yet', () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run(); // mark as period day
+    testDb.insert(periods).values(periodWithDurationOne).run();   // the period itself
+    testDb.insert(periodDays).values(periodDayEntry).run();
+
+    deletePeriodDay(_userId, _startDate);
+
+    // Assert: periodDays row should be gone
+    const pdResult = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _startDate), eq(periodDays.periodId, _periodId))
+      )
+      .all();
+    expect(pdResult).toHaveLength(0);
+
+    // Assert: the period itself should be deleted because it had no days left
+    const periodResult = testDb
+      .select()
+      .from(periods)
+      .where(
+        and(eq(periods.periodId, _periodId), eq(periods.userId, _userId))
+      )
+      .all();
+    expect(periodResult).toHaveLength(0);
+
+    // Assert: the day still exists but isPeriodDay must now be false
+    const dayResult = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _startDate)))
+      .all();
+    expect(dayResult).toHaveLength(1);
+    expect(dayResult[0].isPeriodDay).toBe(false);
+  });
+
+  it('removes a period day entry from both the periodDays, periods and days table and updates period endDate', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run(); // mark as period day
+    testDb.insert(days).values(periodDayTwo).run(); // mark as period day
+    testDb.insert(periods).values(periodWithDurationTwo).run();
+    testDb.insert(periodDays).values(periodDayEntry).run();
+    testDb.insert(periodDays).values(periodDayEntryTwo).run();
+
+    const pdResultLengthBeforeDeletion = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _startDate), eq(periodDays.periodId, _periodId))
+      )
+      .all().length;
+    
+    const daysResultBeforeDeletion = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _startDate)))
+      .all();
+
+    deletePeriodDay(_userId, _startDate);
+
+    // Assert: periodDays row should be gone
+    const pdResultAfterDeletion = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _startDate), eq(periodDays.periodId, _periodId))
+      )
+      .all();
+
+    expect(pdResultAfterDeletion).toHaveLength(pdResultLengthBeforeDeletion - 1);
+    
+    // Assert: the period end date should be different, but the period should still exist
+    const periodResult = testDb
+      .select()
+      .from(periods)
+      .where(
+        and(eq(periods.periodId, _periodId), eq(periods.userId, _userId))
+      )
+      .all();
+
+    expect(periodResult[0].endDate).toBe(_startDate);
+    expect(periodResult[0].periodId).toBe(_periodId);
+
+    // TODO: the endDate should be removed if no symptoms etc are present, otherwise isPeriodDay must now be false
+    const dayResultAfterDeletion = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _startDate)))
+      .all();
+    
+    expect(dayResultAfterDeletion.length).toHaveLength(daysResultBeforeDeletion.length - 1);
+  });
+
+  // removes a period day entry from both the periodDays, periods and days table and updates period startDate (remove first)
+  it('removes a period day entry from both the periodDays, periods and days table and updates period startDate', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run(); // mark as period day
+    testDb.insert(days).values(periodDayTwo).run(); // mark as period day
+    testDb.insert(periods).values(periodWithDurationTwo).run();
+    testDb.insert(periodDays).values(periodDayEntry).run();
+    testDb.insert(periodDays).values(periodDayEntryTwo).run();
+
+    const pdResultLengthBeforeDeletion = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _startDate), eq(periodDays.periodId, _periodId))
+      )
+      .all().length;
+    
+    const daysResultBeforeDeletion = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _startDate)))
+      .all();
+
+    deletePeriodDay(_userId, _endDate);
+
+    // Assert: periodDays row should be gone
+    const pdResultAfterDeletion = testDb
+      .select()
+      .from(periodDays)
+      .where(
+        and(eq(periodDays.userId, _userId), eq(periodDays.date, _endDate), eq(periodDays.periodId, _periodId))
+      )
+      .all();
+
+    expect(pdResultAfterDeletion).toHaveLength(pdResultLengthBeforeDeletion - 1);
+    
+    // Assert: the period start date should be different, but the period should still exist
+    const periodResult = testDb
+      .select()
+      .from(periods)
+      .where(
+        and(eq(periods.periodId, _periodId), eq(periods.userId, _userId))
+      )
+      .all();
+
+    expect(periodResult[0].startDate).toBe(_endDate);
+    expect(periodResult[0].periodId).toBe(_periodId);
+
+    // TODO: the endDate should be removed if no symptoms etc are present, otherwise isPeriodDay must now be false
+    const dayResultAfterDeletion = testDb
+      .select()
+      .from(days)
+      .where(and(eq(days.userId, _userId), eq(days.date, _endDate)))
+      .all();
+    
+    expect(dayResultAfterDeletion.length).toHaveLength(daysResultBeforeDeletion.length - 1);
+    expect(dayResultAfterDeletion[0].date).toBe(_endDate);
+    expect(dayResultAfterDeletion[0].isPeriodDay).toBeTruthy();
+  });
+
+  // TODO: if periodEntry doesn't exist
+
+  // TODO: if periodEntry doesn't exist for that user
+
+  //TODO: if entry to be removed is startDate, expect....
+
+  //TODO: if entry to be removed is date somewhere in the middle, expect...
+
+  //TODO: if no day remains for the respective periodId (i.e. to remove is the last periodEntry) remove entire period from db
+});
+
+describe('setEndDate', () => {
+  beforeAll(() => {
+    testDb = createTestDatabase();
+  });
+
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+  
+  const _periodId: string = periodWithDurationOne.periodId;
+  const _userId: string = periodWithDurationOne.userId;
+  const _startDate: string = periodWithDurationOne.startDate;
+
+  it('if period entry does not exist', async () => {
+    const result = await setEndDate(_userId, _periodId, _startDate);
+    
+    expect(result).toHaveLength(0);
+  });
+
+  it('sets endDate of period with existing periodId successfully', async () => {
+    testDb.insert(users).values(testUser).run(); // to satisfy FK constraint
+    testDb.insert(periods).values(periodWithDurationOne).run();
+
+    const result = await setEndDate(_userId, _periodId, '2026-05-05');
+
+    expect(result).toBeDefined();
+    if (result) {
+      expect(result).toHaveLength(1);
+      expect(result[0].endDate).toBe("2026-05-05");
+    }
+  });
+
+});
+
+describe('fetchSelectedDayEntry', () => {
+  beforeAll(() => {
+    testDb = createTestDatabase();
+  });
+
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+  
+  const _userId: string = periodDay.userId;
+  const _date: string = periodDay.date;
+  const isPeriodDay: boolean = periodDay.isPeriodDay;
+
+  it('returns null if selected dayEntry does not exist', async () => {
+    testDb.insert(users).values(testUser).run();
+    const result = await fetchSelectedDayEntry(_userId, _date);
+
+    expect(result).toBeNull();
+  });
+
+  it('returns correct dayEntry if selected dayEntry exists', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run();
+
+    const result = await fetchSelectedDayEntry(_userId, _date);
+
+    expect(result).toBeDefined();
+    expect(result?.userId).toBe(_userId);
+    expect(result?.date).toBe(_date);
+    expect(result?.isPeriodDay).toBe(isPeriodDay);
+  });
+});
+
+describe('insertNewPeriodDayIntoDaysTable', () => {
+
+});
+
+describe('insertNewPeriodDayIntoPeriodDaysTable', () => {
+
+});
+
+describe('insertNewPeriodIntoPeriodsTable', () => {
+
+});
+
+describe('fetchMonthDataFromDb', () => {
+  
+});
+
+describe('fetchPeriod', () => {
+  beforeAll(() => {
+    testDb = createTestDatabase();
+  });
+
+  beforeEach(() => {
+    cleanTestDatabase(testDb);
+  });
+  
+  const _userId: string = periodDay.userId;
+
+  it('returns null if no active period exists for current user', async () => {
+    testDb.insert(users).values(testUser).run();
+
+    const result = await fetchPeriod(periodDayTwo.date, _userId);
+    
+    expect(result).toBeDefined();
+
+    if (result) {
+      // returns [periodId, startDate]
+      expect(result?.[0]).toBeNull();
+      expect(result?.[1]).toBeNull();
+    }
+  });
+
+  // one symptom entry, multi-day period
+  it('returns active period if one exists for current user', async () => {
+    testDb.insert(users).values(testUser).run();
+    testDb.insert(days).values(periodDay).run();
+    testDb.insert(days).values(periodDayTwo).run();
+    testDb.insert(symptoms).values(oneSymptomEntry).run();
+    testDb.insert(periods).values(periodWithDurationTwo).run();
+    testDb.insert(periodDays).values(periodDayEntry).run();
+    testDb.insert(periodDays).values(periodDayEntryTwo).run();
+
+    const result = await fetchPeriod(periodDayTwo.date, _userId);
+
+    expect(result).toBeDefined();
+    
+    if (result) {
+      // returns [periodId, startDate]
+      expect(result?.[0]).toBe(periodWithDurationTwo.periodId);
+      expect(result?.[1]).toBe(periodWithDurationTwo.startDate);
+    }
+  });
+  
+   // TODO: multiple symptom entries
+});

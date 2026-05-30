@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { deletePeriodDay, fetchDayDetails, fetchPeriod, insertNewPeriodDayIntoDaysTable, insertNewPeriodDayIntoPeriodDaysTable, insertNewPeriodIntoPeriodsTable, setEndDate } from "@/db/calendar-queries";
+import { deletePeriodDay, fetchDayDetails, fetchPeriod, insertNewPeriodDayIntoDaysTable, insertNewPeriodDayIntoPeriodDaysTable, insertNewPeriodIntoPeriodsTable, setEndDate } from "@/services/db-query-service";
 import { log } from '@/utils/logger';
 import { useEffect, useState } from 'react';
 import { PeriodEntry } from '@/types/calendar-types';
